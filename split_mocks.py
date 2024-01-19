@@ -8,6 +8,7 @@ from hodpy.k_correction import GAMA_KCorrection
 from hodpy import lookup
 from hodpy.cosmology import CosmologyAbacus
 from scipy.interpolate import CubicSpline
+from Relativistic_effects.gravitational_redshift import z_grav
 
 cosmo = CosmologyAbacus(0)  #c000 cosmology
 kcorr_r = GAMA_KCorrection(cosmo, k_corr_file=lookup.kcorr_file, cubic_interpolation=True)
@@ -23,29 +24,40 @@ def write_file(ra,dec,dist,output_file):
     t.writeto(output_file,overwrite=True)
     
 
-def test():
-    print(test)
-
-
-def split_magnitudes(input_file, m_lim, z_cut, n_bins, cut_bright, cut_faint, output_path):
+def split_magnitudes(input_file, space, m_lim, z_max, n_bins, cut_bright, cut_faint, output_path):
     
     sky = fits.open(input_file)
     data = sky[1].data
     sky.close()
     
-    z = data['Z']
     M = data['R_MAG_ABS']
-    g_r_rest = data['G_R_REST']
+    g_r = data['G_R_REST']
     ra = data['RA']
     dec = data['DEC']
-
+    phi = data['Pot A Soft 7']
+    phi0 = 0
+    
+    if space == 'real':
+        
+        z = data['Z_COSMO']
+        
+    elif space == 'rsd':
+    
+        z = data['Z']
+        
+    elif space == 'obs':
+        
+        z_rsd = data['Z']
+        z_cosmo = data['Z_COSMO']
+        z = z_grav(z_cosmo, z_rsd, phi, phi0)
+        
     m = kcorr_r.apparent_magnitude(M, z, g_r)
     
-    cond = (np.isnan(m)==False)*(m<=m_lim)*(z<=z_cut)
+    cond = (np.isnan(m)==False)*(m<=m_lim)*(z<=z_max)
     m = m[cond]
     z = z[cond]
     
-    z_bins = np.linspace(0, z_cut, n_bins+1)
+    z_bins = np.linspace(0, z_max, n_bins+1)
     
     z_means = np.zeros(n_bins)
     m_cuts_b = np.zeros(n_bins)
@@ -141,19 +153,20 @@ def split_magnitudes(input_file, m_lim, z_cut, n_bins, cut_bright, cut_faint, ou
     dist_b = cosmo.comoving_distance(z_b)
     dist_f = cosmo.comoving_distance(z_f)
     
-    output_b = output_path+'_bright_'+str(cut_bright)+'.fits'
-    output_f = output_path+'_faint_'+str(cut_faint)+'.fits'
+    output_file = output_path+'cutsky_'+space+'_zmax'+str(z_max)+'_m'+str(m_lim)
+    output_b = output_file+'_bright_'+str(cut_bright)+'.fits'
+    output_f = output_file+'_faint_'+str(cut_faint)+'.fits'
     
     #plt.figure()
-    #plt.plot(np.linspace(0, z_cut, 50),m_interp_b(np.linspace(0, z_cut, 50)),label='magnitude cut bright')
-    #plt.plot(np.linspace(0, z_cut, 50),m_interp_f(np.linspace(0, z_cut, 50)),label='magnitude cut faint')
+    #plt.plot(np.linspace(0, z_max, 50),m_interp_b(np.linspace(0, z_max, 50)),label='magnitude cut bright')
+    #plt.plot(np.linspace(0, z_max, 50),m_interp_f(np.linspace(0, z_max, 50)),label='magnitude cut faint')
     #plt.xlabel('z')
     #plt.ylabel('m')
     #plt.legend()
     #plt.show()
     #
     #plt.figure()
-    #plt.hist((z_f,z_b),bins=np.linspace(0, z_cut, 50),label=('faint','bright'),density=True)
+    #plt.hist((z_f,z_b),bins=np.linspace(0, z_max, 50),label=('faint','bright'),density=True)
     #plt.xlabel('z')
     #plt.ylabel('n(z)')
     #plt.legend()
@@ -166,6 +179,7 @@ def split_magnitudes(input_file, m_lim, z_cut, n_bins, cut_bright, cut_faint, ou
     #plt.ylabel('n(m)')
     #plt.legend()
     #plt.show()
+    
     
     write_file(ra_b,dec_b,dist_b,output_b)
     write_file(ra_f,dec_f,dist_f,output_f)
