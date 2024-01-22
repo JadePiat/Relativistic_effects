@@ -7,7 +7,7 @@ from hodpy.cosmology import CosmologyAbacus
 cosmo = CosmologyAbacus(0)  #c000 cosmology
 
 path_in = '/global/cfs/cdirs/desi/cosmosim/SecondGenMocks/AbacusSummit/CutSky/BGS/v0.1/z0.200/'
-path_out = 'pscratch/sd/j/jpiat/Abacus/Ab_c000_ph006/z0.200/Split/BGS/'
+path_out = '/pscratch/sd/j/jpiat/Abacus/Ab_c000_ph006/z0.200/Split/BGS/'
 
 n_randoms = 10
 
@@ -16,8 +16,6 @@ def main(path_in, path_out, z_max):
     for i in range(1,n_randoms+1):
         
         input_file = path_in+'random_S'+str(i)+'00_1X.fits'
-        
-        print(1)
         
         sky = fits.open(input_file)
         data = Table(sky[1].data)
@@ -30,8 +28,6 @@ def main(path_in, path_out, z_max):
         if i == 1:
             
             table = data['RA','DEC','DIST']
-            
-            print(2)
             
             continue
         
