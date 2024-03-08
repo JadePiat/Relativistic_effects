@@ -9,6 +9,7 @@ from hodpy import lookup
 from hodpy.cosmology import CosmologyAbacus
 from scipy.interpolate import CubicSpline
 from Relativistic_effects.gravitational_redshift import z_grav
+from Relativistic_effects.split_mocks_eff import split_mag_eff
 
 cosmo = CosmologyAbacus(0)  #c000 cosmology
 kcorr_r = GAMA_KCorrection(cosmo, k_corr_file=lookup.kcorr_file, cubic_interpolation=True)
@@ -32,7 +33,7 @@ def write_file(ra,dec,dist,output_file):
     t.writeto(output_file,overwrite=True)
     
 
-def split_magnitudes(input_file, space, m_lim, z_max, n_bins, cut_bright, cut_faint, mu, output_path):
+def split_magnitudes(input_file, space, m_lim, z_max, n_bins, cut_bright, cut_faint, output_path):
     
     sky = fits.open(input_file)
     data = sky[1].data
@@ -49,156 +50,133 @@ def split_magnitudes(input_file, space, m_lim, z_max, n_bins, cut_bright, cut_fa
     phi0 = phi[z_cos==np.min(z_cos)]
     z_tot = z_grav(z_cos, z, phi, phi0)
     
-    m = apparent_mag(M,z_tot,g_r)
-    m_mag = m - 2.5*np.log10(mu)
+    m_tot = apparent_mag(M,z_tot,g_r)
     
-    cond = (np.isnan(m)==False)*(m<=m_lim)*(z<=z_max)
-    cond_mag = (np.isnan(m)==False)*(m_mag<=m_lim)*(z<=z_max)
-    m = m[cond]
-    m_mag = m_mag[cond_mag]
-    z_g = z_tot[cond]
-    z_g_mag = z_tot[cond_mag]
-    z_cos = z_cos[cond]
+    fig, axs = plt.subplots(1, 2, figsize = (9,5), layout='tight')
+    fig.suptitle(f'{cut_bright}/{cut_faint}')
+    axs[0].set_title('Bright')
+    axs[1].set_title('Faint')
+    axs[0].set_ylabel('s')
+    axs[1].set_ylabel('s')
+    axs[0].set_xlabel('df/f')
+    axs[1].set_xlabel('df/f')
     
-    z_bins = np.linspace(0, np.max(z_g), n_bins+1)
+    mu = np.arange(1.0001,1.011,0.001)
+    sb = np.zeros(len(mu))
+    sf = np.zeros(len(mu))
     
-    z_means = np.zeros(n_bins)
-    m_cuts_b = np.zeros(n_bins)
-    m_cuts_f = np.zeros(n_bins)
-    s_b = np.zeros(n_bins)
-    s_f = np.zeros(n_bins)
-    s_b_eff = 0
-    s_f_eff = 0
-    s_eff = 0
-    N_b = 0
-    N_f = 0
-    N = 0
+    s_eff, s_Meff = split_mag_eff(input_file, space, m_lim, z_max, n_bins, cut_bright, cut_faint, output_path)
+    
+    sb_eff = s_eff[0]
+    sf_eff = s_eff[1]
     
     
-    for i in range(n_bins):
-        if i==(n_bins-1):
-            bin = (z_g>=z_bins[i])*(z_g<=z_bins[i+1])
-        else:
-            bin = (z_g>=z_bins[i])*(z_g<z_bins[i+1])
-    
-        mi = m[bin]
-        zi = z_g[bin]
+    for j,mu_j in enumerate(mu):
         
-        z_means[i] = np.mean(zi)
+        m_mag = m_tot - 2.5*np.log10(mu_j)
         
-        m_cut_b = np.percentile(mi,cut_bright)
-        m_cut_f = np.percentile(mi,100-cut_faint)
-        m_cuts_b[i] = m_cut_b
-        m_cuts_f[i] = m_cut_f
+        cond = (np.isnan(m_tot)==False)*(m_tot<=m_lim)*(z<=z_max)
+        cond_mag = (np.isnan(m_tot)==False)*(m_mag<=m_lim)*(z<=z_max)
+        m = m_tot[cond]
+        m_mag = m_mag[cond_mag]
+        z_g = z_tot[cond]
+        z_g_mag = z_tot[cond_mag]
         
-        # compute magnification bias
+        z_bins = np.linspace(0, np.max(z_g), n_bins+1)
         
-        mi_b = mi[mi<=m_cut_b]
-        mi_f = mi[mi>m_cut_f]
+        z_means = np.zeros(n_bins)
+        m_cuts_b = np.zeros(n_bins)
+        m_cuts_f = np.zeros(n_bins)
+        s_b = np.zeros(n_bins)
+        s_f = np.zeros(n_bins)
+        s_b_eff = 0
+        s_f_eff = 0
+        s_eff = 0
+        N_b = 0
+        N_f = 0
+        N = 0
         
-        n_b,bins_b = np.histogram(mi_b,bins=50)
-        cn_b = np.cumsum(n_b)
-        centres_b = (bins_b[1:]+bins_b[:-1])/2
-        si_b = (np.log10(cn_b[-1])-np.log10(cn_b[-2]))/(centres_b[-1]-centres_b[-2])
-        s_b[i] = si_b
         
-        n,bins = np.histogram(mi,bins=50)
-        cn = np.cumsum(n)
-        centres = (bins[1:]+bins[:-1])/2
-        si = (np.log10(cn[-1])-np.log10(cn[-2]))/(centres[-1]-centres[-2])
+        for i in range(n_bins):
+            if i==(n_bins-1):
+                bin = (z_g>=z_bins[i])*(z_g<=z_bins[i+1])
+            else:
+                bin = (z_g>=z_bins[i])*(z_g<z_bins[i+1])
         
-        if cut_bright == cut_faint:
-       
-            mi_ =  mi[mi<=m_cut_f]
-            n_,bins_ = np.histogram(mi_,bins=50)
-            cn_ = np.cumsum(n_)
-            centres_ = (bins_[1:]+bins_[:-1])/2
-            si_ = (np.log10(cn_[-1])-np.log10(cn_[-2]))/(centres_[-1]-centres_[-2])
+            mi = m[bin]
+            zi = z_g[bin]
             
-            si_f = si*len(mi)/len(mi_f)-si_*len(mi_)/len(mi_f)
-            s_f[i] = si_f
-       
-        else:
-            si_f = si*len(mi)/len(mi_f)-si_b*len(mi_b)/len(mi_f)
-            s_f[i] = si_f
-      
-        s_eff += len(mi)*si
-        s_b_eff += len(mi_b)*si_b
-        s_f_eff += len(mi_f)*si_f
-        N_b += len(mi_b)
-        N_f += len(mi_f)
-        N += len(mi)
+            z_means[i] = np.mean(zi)
+            
+            m_cut_b = np.percentile(mi,cut_bright)
+            m_cut_f = np.percentile(mi,100-cut_faint)
+            m_cuts_b[i] = m_cut_b
+            m_cuts_f[i] = m_cut_f
+        
+        
+        m_interp_b = CubicSpline(z_means, m_cuts_b, extrapolate=True)
+        m_interp_f = CubicSpline(z_means, m_cuts_f, extrapolate=True)
+        
+        cond_b = (m<=m_interp_b(z_g))
+        cond_f = (m>m_interp_f(z_g))
+        
+        cond_b_mag = (m_mag<=m_interp_b(z_g_mag))
+        cond_f_mag = (m_mag>m_interp_f(z_g_mag))
+        
+        m_b = m[cond_b]
+        m_f = m[cond_f]
+        
+        m_b_mag = m_mag[cond_b_mag]
+        m_f_mag = m_mag[cond_f_mag]
+        
+        dm_b = abs(len(m_b_mag) - len(m_b))/len(m_b)
+        s_b = 0.4*dm_b*1/(mu_j-1)
+        
+        dm_f = abs(len(m_f_mag) - len(m_f))/len(m_f)
+        s_f = 0.4*dm_f*1/(mu_j-1)
+        
+        #print(f'magnification method: s_bright = {s_b}, s_faint = {s_f}, ds =', s_b-s_f)
+        
+        sb[j] = s_b
+        sf[j] = s_f
+        
+    axs[0].axhline(sb_eff,ls='--',color='k',label='effective value')
+    axs[1].axhline(sf_eff,ls='--',color='k',label='effective value')
+    axs[0].plot(mu-1,sb,marker='o')
+    axs[1].plot(mu-1,sf,marker='o')
     
-    s_b_eff /= N_b
-    s_f_eff /= N_f
-    s_eff /= N
+    axs[0].legend()
+    axs[1].legend()
+    plt.show()
     
-    print(cut_bright, '/', cut_faint, f'\neffective magnification biases: s_bright = {s_b_eff}, s_faint = {s_f_eff}, ds =', s_b_eff-s_f_eff)
+    if space == 'real':
     
+        z_b = z_cos[cond][cond_b]
+        z_f = z_cos[cond][cond_f]
+        
+    if space == 'grav':
+        
+        z_b = z_g[cond_b]
+        z_f = z_g[cond_f]
     
-    m_interp_b = CubicSpline(z_means, m_cuts_b, extrapolate=True)
-    m_interp_f = CubicSpline(z_means, m_cuts_f, extrapolate=True)
-    
-    cond_b = (m<=m_interp_b(z_g))
-    cond_f = (m>m_interp_f(z_g))
-    
-    cond_b_mag = (m_mag<=m_interp_b(z_g_mag))
-    cond_f_mag = (m_mag>m_interp_f(z_g_mag))
-    
-    
-    m_b = m[cond_b]
-    m_f = m[cond_f]
-    
-    m_b_mag = m_mag[cond_b_mag]
-    m_f_mag = m_mag[cond_f_mag]
-    
-    #h, bins = np.histogram(m,bins=50)
-    #bins = (bins[1:]+bins[:-1])/2
-    #ch = np.cumsum(h)
-    
-    #hb, binsb = np.histogram(m_b,bins=50)
-    #binsb = (binsb[1:]+binsb[:-1])/2
-    #chb = np.cumsum(hb)
-    
-    #hf, binsf = np.histogram(m_f,bins=50)
-    #binsf = (binsf[1:]+binsf[:-1])/2
-    #chf = np.cumsum(hf)
-       
-    #s = (np.log10(ch[-1])-np.log10(ch[-2]))/(bins[-1]-bins[-2])
-    #sb = (np.log10(chb[-1])-np.log10(chb[-2]))/(binsb[-1]-binsb[-2])
-    #sf = (np.log10(chf[-1])-np.log10(chf[-2]))/(binsf[-1]-binsf[-2])
-    
-    #print(s, sb, sf)
-    
-    dm_b = abs(len(m_b_mag) - len(m_b))/len(m_b)
-    s_b = 0.4*dm_b*1/(mu-1)
-    
-    dm_f = abs(len(m_f_mag) - len(m_f))/len(m_f)
-    s_f = 0.4*dm_f*1/(mu-1)
-    
-    print(f'magnification method: s_bright = {s_b}, s_faint = {s_f}, ds =', s_b-s_f)
-    
-    #if space == 'real':
-    #
-    #    z_b = z_cos[cond_b]
-    #    z_f = z_cos[cond_f]
-    #    
-    #if space == 'grav':
-    #    
-    #    z_b = z_g[cond_b]
-    #    z_f = z_g[cond_f]
-    #
-    #ra_b = ra[cond][cond_b]
-    #ra_f = ra[cond][cond_f]
-    #dec_b = dec[cond][cond_b]
-    #dec_f = dec[cond][cond_f]
+    ra_b = ra[cond][cond_b]
+    ra_f = ra[cond][cond_f]
+    dec_b = dec[cond][cond_b]
+    dec_f = dec[cond][cond_f]
     #dist_b = cosmo.comoving_distance(z_b)
     #dist_f = cosmo.comoving_distance(z_f)
-    #
-    #output_file = output_path+'cutsky_'+space+'_zmax'+str(z_max)+'_m'+str(m_lim)
-    #output_b = output_file+'_bright_'+str(cut_bright)+'.fits'
-    #output_f = output_file+'_faint_'+str(cut_faint)+'.fits'
-    #
+    
+    output_file = output_path+'cutsky_'+space+'_zmax'+str(z_max)+'_m'+str(m_lim)
+    output_b = output_file+'_bright_'+str(cut_bright)+'.fits'
+    output_f = output_file+'_faint_'+str(cut_faint)+'.fits'
+    
+    #write_file(ra_b,dec_b,dist_b,output_b)
+    #write_file(ra_f,dec_f,dist_f,output_f)
+    
+        
+        
+        
+    
     #plt.figure()
     #plt.plot(np.linspace(0, z_max, 50),m_interp_b(np.linspace(0, z_max, 50)),label='magnitude cut bright')
     #plt.plot(np.linspace(0, z_max, 50),m_interp_f(np.linspace(0, z_max, 50)),label='magnitude cut faint')
@@ -206,23 +184,43 @@ def split_magnitudes(input_file, space, m_lim, z_max, n_bins, cut_bright, cut_fa
     #plt.ylabel('m')
     #plt.legend()
     #plt.show()
-    #
+    
     #plt.figure()
-    #plt.hist((z_f,z_b),bins=np.linspace(0, 0.6, 50),label=('faint','bright'),density=True)
-    #plt.hist(z, bins=np.linspace(0, 0.6, 50),label='full mock',density=True,alpha=0.5)
-    #plt.hist(z_cos, bins=np.linspace(0, 0.6, 50),label='full mock',density=True,alpha=0.5)
-    #plt.xlabel('z')
-    #plt.ylabel('n(z)')
-    #plt.legend()
+    #plt.scatter(ra[cond],dec[cond],s=2,alpha=0.5)
+    #plt.xlabel('RA [deg]',fontsize=13)
+    #plt.ylabel('Dec [deg]',fontsize=13)
     #plt.show()
     #
+    #plt.figure()
+    #plt.title('10/90',fontsize=15)
+    #plt.hist(z_g, bins=np.linspace(0, 0.55, 51),label='full mock',density=True,alpha=0.5,zorder=1)
+    #plt.hist((z_f,z_b),bins=np.linspace(0, 0.55, 51),label=('faint','bright'),density=True,zorder=0)
+    ##plt.hist(z_cos, bins=np.linspace(0, 0.6, 50),label='full mock',density=True,alpha=0.5)
+    #plt.xlabel('z',fontsize=13)
+    #plt.ylabel('n(z)',fontsize=13)
+    #plt.legend(fontsize=13)
+    #plt.show()
     #
     #plt.figure()
-    #plt.hist(m_f,bins=50,label='faint',histtype='step')
-    #plt.hist(m_b,bins=50,label='bright',histtype='step')
-    #plt.xlabel('m')
-    #plt.ylabel('n(m)')
-    #plt.legend()
+    #plt.hist(z_g, bins=np.linspace(0, 0.55, 51),alpha=0.5)
+    #plt.xlabel('z',fontsize=13)
+    #plt.ylabel('n(z)',fontsize=13)
+    #plt.show()
+    #
+    #plt.figure()
+    #plt.hist(m, bins=np.linspace(10,19.5,51),alpha=0.5)
+    #plt.xlabel('m',fontsize=13)
+    #plt.ylabel('n(m)',fontsize=13)
+    #plt.show()
+    #
+    #bins = np.linspace(10,np.max(m_f),51)
+    #plt.figure()
+    #plt.title('10/90')
+    #plt.hist(m_f,bins=bins,label='faint',alpha=0.5,histtype='step',density=True)
+    #plt.hist(m_b,bins=bins,label='bright',alpha=0.5,histtype='step',density=True)
+    #plt.xlabel('m',fontsize=13)
+    #plt.ylabel('n(m)',fontsize=13)
+    #plt.legend(fontsize=13)
     #plt.show()
     
     #plt.figure()
@@ -234,9 +232,3 @@ def split_magnitudes(input_file, space, m_lim, z_max, n_bins, cut_bright, cut_fa
     #plt.grid()
     #plt.legend()
     #plt.show()
-
-    
-    #write_file(ra_b,dec_b,dist_b,output_b)
-    #write_file(ra_f,dec_f,dist_f,output_f)
-    
-    return np.array([s_b, s_f, s_b-s_f]), np.array([s_b_eff, s_f_eff, s_b_eff-s_f_eff])

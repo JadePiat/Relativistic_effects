@@ -37,11 +37,11 @@ def main(path_in, path_out, n_randoms, space, z_max, m_lim):
         
         if i == 1:
             
-            table = data['Z','RA','DEC','COM_DIST']
+            table = data['RA','DEC','COM_DIST']
             
             continue
         
-        table = vstack([table,data['Z','RA','DEC','COM_DIST']])
+        table = vstack([table,data['RA','DEC','COM_DIST']])
         
     output_file = path_out+'randoms_'+str(n_randoms)+'_cutsky_'+space+'_zmax'+str(z_max)+'.fits'
         
@@ -57,6 +57,7 @@ if __name__ == "__main__":
     n_randoms = 10
     
     main(path_in, path_out, n_randoms, 'grav', 0.5, 19.5)
+    main(path_in, path_out, n_randoms, 'real', 0.5, 19.5)
     
     
     
