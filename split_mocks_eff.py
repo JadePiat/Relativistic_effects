@@ -88,15 +88,6 @@ def split_mag_eff(input_file, space, m_lim, z_max, n_bins, cut_bright, cut_faint
     N_f = 0
     #N = 0
     
-    #### test with absolute mag
-    
-    s_Mb_eff = 0
-    s_Mf_eff = 0
-    N_Mb = 0
-    N_Mf = 0
-    
-    ####
-    
     
     for i in range(n_bins):
         if i==(n_bins-1):
@@ -134,19 +125,6 @@ def split_mag_eff(input_file, space, m_lim, z_max, n_bins, cut_bright, cut_faint
         centres = (bins[1:]+bins[:-1])/2
         si = (np.log10(cn[-1])-np.log10(cn[-2]))/(centres[-1]-centres[-2])
         
-        #### test with absolute mag
-        
-        n_b,bins_b = np.histogram(Mi_b,bins=50)
-        cn_b = np.cumsum(n_b)
-        centres_b = (bins_b[1:]+bins_b[:-1])/2
-        si_Mb = (np.log10(cn_b[-1])-np.log10(cn_b[-2]))/(centres_b[-1]-centres_b[-2])
-        
-        n,bins = np.histogram(Mi,bins=50)
-        cn = np.cumsum(n)
-        centres = (bins[1:]+bins[:-1])/2
-        siM = (np.log10(cn[-1])-np.log10(cn[-2]))/(centres[-1]-centres[-2])
-        
-        ####
         
         if cut_bright == cut_faint:
        
@@ -159,28 +137,11 @@ def split_mag_eff(input_file, space, m_lim, z_max, n_bins, cut_bright, cut_faint
             si_f = si*len(mi)/len(mi_f)-si_*len(mi_)/len(mi_f)
             s_f[i] = si_f
             
-            #### test with absolute mag
-            
-            Mi_ =  Mi[mi<=m_cut_f]
-            n_,bins_ = np.histogram(Mi_,bins=50)
-            cn_ = np.cumsum(n_)
-            centres_ = (bins_[1:]+bins_[:-1])/2
-            si_M = (np.log10(cn_[-1])-np.log10(cn_[-2]))/(centres_[-1]-centres_[-2])
-            
-            si_Mf = siM*len(Mi)/len(Mi_f)-si_M*len(Mi_)/len(Mi_f)
-            
-            ####
        
         else:
             si_f = si*len(mi)/len(mi_f)-si_b*len(mi_b)/len(mi_f)
             s_f[i] = si_f
-            
-            #### test with absolute mag
-            
-            si_Mf = siM*len(Mi)/len(Mi_f)-si_Mb*len(Mi_b)/len(Mi_f)
-            
-            ####
-      
+              
         #s_eff += len(mi)*si
         #N += len(mi)
         s_b_eff += len(mi_b)*si_b
@@ -188,28 +149,12 @@ def split_mag_eff(input_file, space, m_lim, z_max, n_bins, cut_bright, cut_faint
         N_b += len(mi_b)
         N_f += len(mi_f)
         
-        #### test with absolute mag
-            
-        s_Mb_eff += len(Mi_b)*si_Mb
-        s_Mf_eff += len(Mi_f)*si_Mf
-        N_Mb += len(Mi_b)
-        N_Mf += len(Mi_f)
-            
-        ####
 
     s_b_eff /= N_b
     s_f_eff /= N_f
     #s_eff /= N
     
-    #### test with absolute mag
-    
-    s_Mb_eff /= N_Mb
-    s_Mf_eff /= N_Mf
-    
-    
     print(cut_bright, '/', cut_faint, f'\neffective magnification biases: s_bright = {s_b_eff}, s_faint = {s_f_eff}, ds =', s_b_eff-s_f_eff)
-    
-    print(cut_bright, '/', cut_faint, f'\neffective magnification biases: s_bright = {s_Mb_eff}, s_faint = {s_Mf_eff}')
     
     
     #m_interp_b = CubicSpline(z_means, m_cuts_b, extrapolate=True)
