@@ -14,8 +14,8 @@ def R(f,H,Om,r,s,be=0):
     
 def matter_power_spectrum(k,z):
     
-    fo_camb = cosmo.cosmo_cosmoprimo.get_fourier(engine='camb') # second initialisation style
-    pk = fo_camb.pk_interpolator() # same number of cells are output than in CLASS
+    fo = Fourier(cosmo.cosmo_cosmoprimo, engine='class') 
+    pk = fo.pk_interpolator()
 
     pk_matter = pk(k, z)
     
