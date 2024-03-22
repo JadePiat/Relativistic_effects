@@ -59,22 +59,9 @@ def split_mag_eff(input_file, space, m_lim, z_max, n_bins, cut_bright, cut_faint
     
     z_bins = np.linspace(0, np.max(z_g), n_bins+1)
     
-    #####
-    hm, hbm = np.histogram(m,bins=50,density=True)
-    binsm = 0.5*(hbm[:-1]+hbm[1:])
-    chm = np.cumsum(hm)
-    
-    hM, hbM = np.histogram(M,bins=50,density=True)
-    binsM = 0.5*(hbM[:-1]+hbM[1:])
-    chM = np.cumsum(hM)
-    
-    plt.xlabel('magnitude')
-    plt.ylabel('cumulative distribution')
-    plt.plot(binsm, chm, label='apparent')
-    plt.plot(binsM, chM, label='absolute')
-    plt.legend(loc='center')
-    plt.show()
-    #####
+    #hm, hbm = np.histogram(m,bins=50,density=True)
+    #binsm = 0.5*(hbm[:-1]+hbm[1:])
+    #chm = np.cumsum(hm)
     
     z_means = np.zeros(n_bins)
     m_cuts_b = np.zeros(n_bins)
@@ -210,4 +197,4 @@ def split_mag_eff(input_file, space, m_lim, z_max, n_bins, cut_bright, cut_faint
     #write_file(ra_b,dec_b,dist_b,output_b)
     #write_file(ra_f,dec_f,dist_f,output_f)
     
-    return np.array([s_b_eff, s_f_eff, s_b_eff-s_f_eff]), np.array([s_Mb_eff, s_Mf_eff])
+    return np.array([s_b_eff, s_f_eff, s_b_eff-s_f_eff])

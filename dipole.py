@@ -29,7 +29,7 @@ def model(k,z,s,b):
     Leading order of the dipole
     
     """
-    
+
     D = cosmo.growth_factor(z)
     f = cosmo.growth_rate(z)
     H = cosmo.H(z)

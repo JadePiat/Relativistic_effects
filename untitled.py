@@ -53,8 +53,11 @@ def split_magnitudes(input_file, space, m_lim, z_max, n_bins, cut_bright, cut_fa
     m_tot = apparent_mag(M,z_tot,g_r)
     
     cond = (np.isnan(m_tot)==False)*(m_tot<=m_lim)*(z<=z_max)
+    cond_mag = (np.isnan(m_tot)==False)*(m_mag<=m_lim)*(z<=z_max)
     m = m_tot[cond]
+    m_mag = m_mag[cond_mag]
     z_g = z_tot[cond]
+    z_g_mag = z_tot[cond_mag]
     
     z_bins = np.linspace(0, np.max(z_g), n_bins+1)
     
@@ -94,20 +97,25 @@ def split_magnitudes(input_file, space, m_lim, z_max, n_bins, cut_bright, cut_fa
     cond_b = (m<=m_interp_b(z_g))
     cond_f = (m>m_interp_f(z_g))
     
+    cond_b_mag = (m_mag<=m_interp_b(z_g_mag))
+    cond_f_mag = (m_mag>m_interp_f(z_g_mag))
+    
     m_b = m[cond_b]
     m_f = m[cond_f]
+    
+    return m_interp_b, m_interp_f
     
     
     if bias:
     
         fig, axs = plt.subplots(1, 2, figsize = (9,5), layout='tight')
-        fig.suptitle(f'{cut_faint}% / {cut_bright}%')
-        #axs[0,0].set_title('Bright')
-        #axs[0,1].set_title('Faint')
-        axs[1].set_ylabel(r's$\rm _B$')
-        axs[0].set_ylabel(r's$\rm _F$')
-        axs[0].set_xlabel(r'$\mu$-1')
-        axs[1].set_xlabel(r'$\mu$-1')
+        fig.suptitle(f'{cut_bright}/{cut_faint}')
+        axs[0].set_title('Bright')
+        axs[1].set_title('Faint')
+        axs[0].set_ylabel('s')
+        axs[1].set_ylabel('s')
+        axs[0].set_xlabel('df/f')
+        axs[1].set_xlabel('df/f')
         
         mu = np.arange(1.0001,1.011,0.001)
         sb = np.zeros(len(mu))
@@ -141,21 +149,14 @@ def split_magnitudes(input_file, space, m_lim, z_max, n_bins, cut_bright, cut_fa
             sb[j] = s_b
             sf[j] = s_f
             
-        axs[0].axhline(sf_eff,ls='--',color='k',label='effective value')
-        axs[1].axhline(sb_eff,ls='--',color='k',label='effective value')
-        
-        axs[0].plot(mu-1,(sf-sf_eff)/sf_eff,c='lightseagreen',marker='o')
-        axs[1].plot(mu-1,(sb-sb_eff)/sb_eff,c='orange',marker='o')
-        
-        #axs[0].axhspan(sf_eff-0.05*sf_eff, sf_eff+0.05*sf_eff, color='grey', alpha=0.5)
-        #axs[1].axhspan(sb_eff-0.05*sb_eff, sb_eff+0.05*sb_eff, color='grey', alpha=0.5)
+        axs[0].axhline(sb_eff,ls='--',color='k',label='effective value')
+        axs[1].axhline(sf_eff,ls='--',color='k',label='effective value')
+        axs[0].plot(mu-1,sb,marker='o')
+        axs[1].plot(mu-1,sf,marker='o')
         
         axs[0].legend()
         axs[1].legend()
         plt.show()
-        
-        
-    return m_interp_b, m_interp_f
     
     
     #if space == 'real':
