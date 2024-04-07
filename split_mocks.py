@@ -33,7 +33,7 @@ def write_file(ra,dec,dist,output_file):
     t.writeto(output_file,overwrite=True)
     
 
-def split_magnitudes(input_file, space, m_lim, z_max, n_bins, cut_bright, cut_faint, output_path, bias = False):
+def split_mag(input_file, space, m_lim, z_max, n_bins, cut_bright, cut_faint, output_path, bias = False):
     
     sky = fits.open(input_file)
     data = sky[1].data
@@ -51,6 +51,10 @@ def split_magnitudes(input_file, space, m_lim, z_max, n_bins, cut_bright, cut_fa
     z_tot = z_grav(z_cos, z, phi, phi0)
     
     m_tot = apparent_mag(M,z_tot,g_r)
+    m_cos = apparent_mag(M,z_cos,g_r)
+    mu = 10**(0.4*(m_cos - m_tot))
+    
+    print(np.mean(mu))
     
     cond = (np.isnan(m_tot)==False)*(m_tot<=m_lim)*(z<=z_max)
     m = m_tot[cond]
@@ -144,30 +148,28 @@ def split_magnitudes(input_file, space, m_lim, z_max, n_bins, cut_bright, cut_fa
         axs[0].axhline(sf_eff,ls='--',color='k',label='effective value')
         axs[1].axhline(sb_eff,ls='--',color='k',label='effective value')
         
-        axs[0].plot(mu-1,(sf-sf_eff)/sf_eff,c='lightseagreen',marker='o')
-        axs[1].plot(mu-1,(sb-sb_eff)/sb_eff,c='orange',marker='o')
+        axs[0].plot(mu-1,sf,c='lightseagreen',marker='o')
+        axs[1].plot(mu-1,sb,c='orange',marker='o')
         
-        #axs[0].axhspan(sf_eff-0.05*sf_eff, sf_eff+0.05*sf_eff, color='grey', alpha=0.5)
-        #axs[1].axhspan(sb_eff-0.05*sb_eff, sb_eff+0.05*sb_eff, color='grey', alpha=0.5)
+        axs[0].axhspan(-0.02*sf_eff+sf_eff, 0.02*sf_eff+sf_eff, color='gray', alpha=0.5,label='2%')
+        axs[1].axhspan(-0.01*sb_eff+sb_eff, 0.01*sb_eff+sb_eff, color='gray', alpha=0.5,label='1%')
         
-        axs[0].legend()
-        axs[1].legend()
+        axs[0].legend(loc='lower right')
+        axs[1].legend(loc='lower right')
         plt.show()
         
+    
+    
+    if space == 'real':
+    
+        z_b = z_cos[cond][cond_b]
+        z_f = z_cos[cond][cond_f]
         
-    return m_interp_b, m_interp_f
+    if space == 'grav':
+        
+        z_b = z_g[cond_b]
+        z_f = z_g[cond_f]
     
-    
-    #if space == 'real':
-    #
-    #    z_b = z_cos[cond][cond_b]
-    #    z_f = z_cos[cond][cond_f]
-    #    
-    #if space == 'grav':
-    #    
-    #    z_b = z_g[cond_b]
-    #    z_f = z_g[cond_f]
-    #
     #ra_b = ra[cond][cond_b]
     #ra_f = ra[cond][cond_f]
     #dec_b = dec[cond][cond_b]
@@ -203,13 +205,12 @@ def split_magnitudes(input_file, space, m_lim, z_max, n_bins, cut_bright, cut_fa
     #plt.show()
     #
     #plt.figure()
-    #plt.title('10/90',fontsize=15)
-    #plt.hist(z_g, bins=np.linspace(0, 0.55, 51),label='full mock',density=True,alpha=0.5,zorder=1)
-    #plt.hist((z_f,z_b),bins=np.linspace(0, 0.55, 51),label=('faint','bright'),density=True,zorder=0)
-    ##plt.hist(z_cos, bins=np.linspace(0, 0.6, 50),label='full mock',density=True,alpha=0.5)
+    #plt.title(f'{cut_faint}% / {cut_bright}%',fontsize=13)
+    #plt.hist(z_g, bins=np.linspace(0, 0.5, 51),color='green',label='full mock',histtype='step',density=True,alpha=0.5,zorder=1)
+    #plt.hist((z_f,z_b),bins=np.linspace(0, 0.5, 51),label=('faint','bright'),histtype='step',density=True,zorder=0)
     #plt.xlabel('z',fontsize=13)
     #plt.ylabel('n(z)',fontsize=13)
-    #plt.legend(fontsize=13)
+    #plt.legend(fontsize=10)
     #plt.show()
     #
     #plt.figure()
@@ -224,14 +225,15 @@ def split_magnitudes(input_file, space, m_lim, z_max, n_bins, cut_bright, cut_fa
     #plt.ylabel('n(m)',fontsize=13)
     #plt.show()
     #
-    #bins = np.linspace(10,np.max(m_f),51)
+    #bins = np.linspace(12,np.max(m_f),51)
     #plt.figure()
     #plt.title('10/90')
-    #plt.hist(m_f,bins=bins,label='faint',alpha=0.5,histtype='step',density=True)
-    #plt.hist(m_b,bins=bins,label='bright',alpha=0.5,histtype='step',density=True)
+    #plt.hist(m,bins=bins,label='full',color='green',alpha=0.5,lw=1.5,histtype='step')
+    #plt.hist(m_f,bins=bins,label='faint',alpha=0.5,lw=1.5,histtype='step')
+    #plt.hist(m_b,bins=bins,label='bright',alpha=0.5,lw=1.5,histtype='step')
     #plt.xlabel('m',fontsize=13)
-    #plt.ylabel('n(m)',fontsize=13)
-    #plt.legend(fontsize=13)
+    #plt.ylabel('dN/dm',fontsize=13)
+    #plt.legend(fontsize=10)
     #plt.show()
     
     #plt.figure()
@@ -243,3 +245,6 @@ def split_magnitudes(input_file, space, m_lim, z_max, n_bins, cut_bright, cut_fa
     #plt.grid()
     #plt.legend()
     #plt.show()
+    
+    
+    #return m_interp_b, m_interp_f

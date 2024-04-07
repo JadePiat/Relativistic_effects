@@ -79,12 +79,23 @@ if __name__ == "__main__" :
         file_b_real = path+f'cutsky_real_zmax0.5_m19.5_bright_{cut_b}.fits'
         file_f_real = path+f'cutsky_real_zmax0.5_m19.5_faint_{cut_f}.fits'
         file_r_real = path+'randoms_10_cutsky_real_zmax0.5.fits'
-    
+        
+        output_grav = f'/global/homes/j/jpiat/data/Pk1_f{cut_f}_b{cut_b}.dat'
+        output_real = f'/global/homes/j/jpiat/data/Pk1_real_f{cut_f}_b{cut_b}.dat'
+        
+        print(1)
+        
+        get_Pk(file_f_grav, file_b_grav, file_r_grav, file_r_grav, output_grav, ells=[1])
+        get_Pk(file_f_real, file_b_real, file_r_real, file_r_real, output_real, ells=[1])
+        
         output_grav = f'/global/homes/j/jpiat/data/Pk1_b{cut_b}_f{cut_f}.dat'
         output_real = f'/global/homes/j/jpiat/data/Pk1_real_b{cut_b}_f{cut_f}.dat'
         
+        print(2)
+        
         get_Pk(file_b_grav, file_f_grav, file_r_grav, file_r_grav, output_grav, ells=[1])
         get_Pk(file_b_real, file_f_real, file_r_real, file_r_real, output_real, ells=[1])
+    
     
     #cuts = [20,30,40,50,60,70,80,90]
     #       

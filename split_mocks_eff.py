@@ -73,7 +73,6 @@ def split_mag_eff(input_file, space, m_lim, z_max, n_bins, cut_bright, cut_faint
     s_eff = 0
     N_b = 0
     N_f = 0
-    #N = 0
     
     
     for i in range(n_bins):
@@ -113,7 +112,7 @@ def split_mag_eff(input_file, space, m_lim, z_max, n_bins, cut_bright, cut_faint
         si = (np.log10(cn[-1])-np.log10(cn[-2]))/(centres[-1]-centres[-2])
         
         
-        if cut_bright == cut_faint:
+        if (cut_bright + cut_faint) != 100:
        
             mi_ =  mi[mi<=m_cut_f]
             n_,bins_ = np.histogram(mi_,bins=50)
@@ -130,28 +129,37 @@ def split_mag_eff(input_file, space, m_lim, z_max, n_bins, cut_bright, cut_faint
             s_f[i] = si_f
               
         #s_eff += len(mi)*si
-        #N += len(mi)
         s_b_eff += len(mi_b)*si_b
         s_f_eff += len(mi_f)*si_f
         N_b += len(mi_b)
         N_f += len(mi_f)
-        
+            
 
     s_b_eff /= N_b
     s_f_eff /= N_f
-    #s_eff /= N
+    #s_eff /= len(m)
+    
     
     print(cut_bright, '/', cut_faint, f'\neffective magnification biases: s_bright = {s_b_eff}, s_faint = {s_f_eff}, ds =', s_b_eff-s_f_eff)
     
     
-    #m_interp_b = CubicSpline(z_means, m_cuts_b, extrapolate=True)
-    #m_interp_f = CubicSpline(z_means, m_cuts_f, extrapolate=True)
+    m_interp_b = CubicSpline(z_means, m_cuts_b, extrapolate=True)
+    m_interp_f = CubicSpline(z_means, m_cuts_f, extrapolate=True)
     
-    #cond_b = (m<=m_interp_b(z_g))
-    #cond_f = (m>m_interp_f(z_g))    
+    cond_b = (m<=m_interp_b(z_g))
+    cond_f = (m>m_interp_f(z_g))    
     
-    #m_b = m[cond_b]
-    #m_f = m[cond_f]
+    m_b = m[cond_b]
+    m_f = m[cond_f]
+    
+    n,bins = np.histogram(m,bins=50)
+    cn = np.cumsum(n)
+    centres = (bins[1:]+bins[:-1])/2
+    s = (np.log10(cn[-1])-np.log10(cn[-2]))/(centres[-1]-centres[-2])
+    
+    test = s*len(m)/len(m_f)-s_b_eff*len(m_b)/len(m_f)
+    
+    print('test:', test)
     
     #h, bins = np.histogram(m,bins=50)
     #bins = (bins[1:]+bins[:-1])/2

@@ -7,9 +7,9 @@ from hodpy.cosmology import CosmologyAbacus
 cosmo = CosmologyAbacus(0)  #c000 cosmology
 from cosmoprimo import *
 
-def R(f,H,Om,r,s,be=0):
+def R(f,H,Om,r,s,be=0,c=3e5):
     
-    return 3-be-3/2*Om-3/2*Om/f-(2-5*s)*(1-1/(H*r))
+    return 3-be-3/2*Om-3/2*Om/f-(2-5*s)*(1-c/(H*r))
     
     
 def matter_power_spectrum(k,z):
@@ -29,7 +29,8 @@ def model(k,z,s,b):
     Leading order of the dipole
     
     """
-
+    
+    c = 3e5
     D = cosmo.growth_factor(z)
     f = cosmo.growth_rate(z)
     H = cosmo.H(z)
@@ -44,7 +45,7 @@ def model(k,z,s,b):
     
     pk_matter = matter_power_spectrum(k,z)
     
-    pk1 = H/k*(f*(b_b*R_f - b_f*R_b) + f**2*3/5*(R_f-R_b)+3/2*(b_b-b_f)*Om)*D**2*pk_matter
+    pk1 = H/(c*k)*(f*(b_b*R_f - b_f*R_b) + f**2*3/5*(R_f-R_b)+3/2*(b_b-b_f)*Om)*D**2*pk_matter
     
     return pk1
         
