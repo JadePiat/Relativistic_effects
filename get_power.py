@@ -4,6 +4,7 @@ from astropy.io import fits
 from astropy.table import Table
 import scipy.constants as const
 import matplotlib.pyplot as plt
+import time
 from pypower import CatalogMesh, MeshFFTPower, CatalogFFTPower, PowerSpectrumStatistics, utils, setup_logging
 
 
@@ -29,7 +30,7 @@ def Pk_check(Pk, ell):
             
 
 
-def get_Pk(data1, data2, rand1, rand2, output_file, ells, kedges = np.arange(0,0.5,0.005)):
+def get_Pk(data1, data2, rand1, rand2, output_file, gridsize, ells, kedges = np.arange(0,0.5,0.005)):
     
     
     data_pos1 = read_file(data1)
@@ -37,13 +38,18 @@ def get_Pk(data1, data2, rand1, rand2, output_file, ells, kedges = np.arange(0,0
     rand_pos1 = read_file(rand1)
     rand_pos2 = read_file(rand2)
     
+    start = time.time()
     
     result = CatalogFFTPower(data_positions1=data_pos1, data_positions2=data_pos2, 
                              randoms_positions1=rand_pos1, randoms_positions2=rand_pos2,
-                             edges=kedges, ells=ells, nmesh=1024, resampler='tsc', position_type='rdd')
-      
+                             edges=kedges, ells=ells, nmesh=gridsize, resampler='tsc', position_type='rdd')     #nmesh=1024
+    
+    end = time.time()
+    print(end-start)
     
     k, Pk = result.poles(ell = ells[0], return_k = True)
+    
+    print(time.time())
     
     data = np.zeros((len(k),len(ells)+1))
     data[:,0] = k
@@ -57,15 +63,14 @@ def get_Pk(data1, data2, rand1, rand2, output_file, ells, kedges = np.arange(0,0
             data[:,i+2] = Pk_check(Pk, ell)
                    
     
-    np.savetxt(output_file, data)
+    #np.savetxt(output_file, data)
            
         
         
 
-if __name__ == "__main__" :
+def get_dipole():
     
     path = '/pscratch/sd/j/jpiat/Abacus/Ab_c000_ph006/z0.200/Split/BGS/'
-    
     
     cuts_b = [10,10,50]
     cuts_f = [10,90,50]
@@ -83,30 +88,48 @@ if __name__ == "__main__" :
         output_grav = f'/global/homes/j/jpiat/data/Pk1_f{cut_f}_b{cut_b}.dat'
         output_real = f'/global/homes/j/jpiat/data/Pk1_real_f{cut_f}_b{cut_b}.dat'
         
-        print(1)
-        
         get_Pk(file_f_grav, file_b_grav, file_r_grav, file_r_grav, output_grav, ells=[1])
         get_Pk(file_f_real, file_b_real, file_r_real, file_r_real, output_real, ells=[1])
         
         output_grav = f'/global/homes/j/jpiat/data/Pk1_b{cut_b}_f{cut_f}.dat'
         output_real = f'/global/homes/j/jpiat/data/Pk1_real_b{cut_b}_f{cut_f}.dat'
         
-        print(2)
-        
         get_Pk(file_b_grav, file_f_grav, file_r_grav, file_r_grav, output_grav, ells=[1])
         get_Pk(file_b_real, file_f_real, file_r_real, file_r_real, output_real, ells=[1])
+        
+     
     
+def get_monopole():
     
-    #cuts = [20,30,40,50,60,70,80,90]
-    #       
-    #for cut in cuts:
-    #    
-    #    file_bright = path+f'cutsky_real_zmax0.5_m19.5_bright_{cut}.fits'
-    #    file_faint = path+f'cutsky_real_zmax0.5_m19.5_faint_{cut}.fits'
-    #    output_bright = f'/global/homes/j/jpiat/data/Pk_bright_{cut}.dat'
-    #    output_faint = f'/global/homes/j/jpiat/data/Pk_faint_{cut}.dat'
-    #    
-    #    get_Pk(file_bright, file_bright, file_random, file_random, output_bright, ells=[0])
-    #    get_Pk(file_faint, file_faint, file_random, file_random, output_faint, ells=[0])
+    path = '/pscratch/sd/j/jpiat/Abacus/Ab_c000_ph006/z0.200/Split/BGS/'
+    
+    file_random = path+'randoms_10_cutsky_real_zmax0.5.fits'
+    
+    cuts = [20,30,40,50,60,70,80,90]
            
+    for cut in cuts:
+        
+        file_bright = path+f'cutsky_real_zmax0.5_m19.5_bright_{cut}.fits'
+        file_faint = path+f'cutsky_real_zmax0.5_m19.5_faint_{cut}.fits'
+        output_bright = f'/global/homes/j/jpiat/data/Pk_bright_{cut}.dat'
+        output_faint = f'/global/homes/j/jpiat/data/Pk_faint_{cut}.dat'
+        
+        get_Pk(file_bright, file_bright, file_random, file_random, output_bright, ells=[0])
+        get_Pk(file_faint, file_faint, file_random, file_random, output_faint, ells=[0])
+        
+        
+        
+if __name__ == "__main__":
+    
+    path = '/pscratch/sd/j/jpiat/Abacus/Ab_c000_ph006/z0.200/Split/BGS/'
+    
+    file_b = path+f'cutsky_real_zmax0.5_m19.5_bright_10.fits'
+    file_f = path+f'cutsky_real_zmax0.5_m19.5_faint_10.fits'
+    file_r = path+'randoms_10_cutsky_real_zmax0.5.fits'
+    
+    
+    for n in [256,512,1024]:
+        
+        get_Pk(file_b, file_f, file_r, file_r, None, n, ells=[1])
+    
            

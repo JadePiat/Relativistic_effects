@@ -15,6 +15,16 @@ cosmo = CosmologyAbacus(0)  #c000 cosmology
 kcorr_r = GAMA_KCorrection(cosmo, k_corr_file=lookup.kcorr_file, cubic_interpolation=True)
 
 
+def magnitude_bias_full(file_name):
+    
+    sky = fits.open(file_name)
+    data = sky[1].data
+    sky.close()
+    
+    ...
+    
+
+
 def apparent_mag(M,z,g_r,Q=0.8):
     
     K = kcorr_r.apparent_magnitude(M, z, g_r)
