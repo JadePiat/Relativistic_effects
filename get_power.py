@@ -105,7 +105,7 @@ def get_monopole():
     
     file_random = path+'randoms_10_cutsky_real_zmax0.5.fits'
     
-    cuts = [20,30,40,50,60,70,80,90]
+    cuts = [10,20,30,40,50,60,70,80,90]
            
     for cut in cuts:
         
