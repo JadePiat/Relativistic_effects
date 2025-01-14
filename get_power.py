@@ -1,3 +1,5 @@
+import sys, os
+sys.path.append('/global/homes/j/jpiat/my_hodpy/')
 import numpy as np
 import astropy.units as u
 from astropy.io import fits
@@ -6,19 +8,47 @@ import scipy.constants as const
 import matplotlib.pyplot as plt
 import time
 from pypower import CatalogMesh, MeshFFTPower, CatalogFFTPower, PowerSpectrumStatistics, utils, setup_logging
+from scipy.interpolate import CubicSpline
+from hodpy.cosmology import CosmologyAbacus
+
+cosmo = CosmologyAbacus(0)  #c000 cosmology
 
 
 def read_file(file):
     
     sky = Table.read(file)
     
-    data = np.zeros((3,len(sky)))
+    data, data_real = np.zeros((3,len(sky))), np.zeros((3,len(sky)))
+    
     data[0] = sky['RA']
     data[1] = sky['DEC']
-    data[2] = sky['COM_DIST']
+    data[2] = sky['DIST_RSD']
     
-    return data
+    data_real[0] = sky['RA']
+    data_real[1] = sky['DEC']
+    data_real[2] = sky['DIST_COM']
+    
+    return data, data_real
 
+
+def get_random(data):
+    
+    N = len(data[0])
+    
+    ra_rand = np.random.uniform(0,360,N*10)
+    dec_rand = np.degrees(np.arcsin(np.random.uniform(-1,1,N*10)))
+    
+    dist_sort = np.sort(data[2])
+    cdf = np.arange(1,N+1,1)/N
+    cdf_inv = CubicSpline(cdf,dist_sort)
+ 
+    r = np.random.uniform(0,1,N*10)
+    dist_rand = cdf_inv(r)
+    
+    rand = np.array([ra_rand,dec_rand,dist_rand])
+    
+    return rand
+    
 
 
 def Pk_check(Pk, ell):
@@ -30,26 +60,22 @@ def Pk_check(Pk, ell):
             
 
 
-def get_Pk(data1, data2, rand1, rand2, output_file, gridsize, ells, kedges = np.arange(0,0.5,0.005)):
-    
-    
-    data_pos1 = read_file(data1)
-    data_pos2 = read_file(data2)
-    rand_pos1 = read_file(rand1)
-    rand_pos2 = read_file(rand2)
+def get_Pk(data1, data2, rand1, rand2, output_file, ells, gridsize=512, kedges = np.arange(0,0.5,0.005)):
     
     start = time.time()
     
-    result = CatalogFFTPower(data_positions1=data_pos1, data_positions2=data_pos2, 
-                             randoms_positions1=rand_pos1, randoms_positions2=rand_pos2,
+    print('start power spectrum computation')
+    
+    result = CatalogFFTPower(data_positions1=data1, data_positions2=data2, 
+                             randoms_positions1=rand1, randoms_positions2=rand2,
                              edges=kedges, ells=ells, nmesh=gridsize, resampler='tsc', position_type='rdd')     #nmesh=1024
+    
+    print('end power spectrum computation')
     
     end = time.time()
     print(end-start)
     
     k, Pk = result.poles(ell = ells[0], return_k = True)
-    
-    print(time.time())
     
     data = np.zeros((len(k),len(ells)+1))
     data[:,0] = k
@@ -63,73 +89,76 @@ def get_Pk(data1, data2, rand1, rand2, output_file, gridsize, ells, kedges = np.
             data[:,i+2] = Pk_check(Pk, ell)
                    
     
-    #np.savetxt(output_file, data)
+    np.savetxt(output_file, data)
            
         
         
 
-def get_dipole():
+def get_dipole(file1, file2, output_path):
     
-    path = '/pscratch/sd/j/jpiat/Abacus/Ab_c000_ph006/z0.200/Split/BGS/'
+    data1, data1_real = read_file(file1)
+    data2, data2_real = read_file(file2)
     
-    cuts_b = [10,10,50]
-    cuts_f = [10,90,50]
+    rand1, rand1_real = get_random(data1), get_random(data1_real)
+    rand2, rand2_real = get_random(data2), get_random(data2_real)
     
-    for cut_b, cut_f in zip(cuts_b, cuts_f):
+    output = output_path+'.dat'
+    output_real = output_path+'_real.dat'
     
-        file_b_grav = path+f'cutsky_grav_zmax0.5_m19.5_bright_{cut_b}.fits'
-        file_f_grav = path+f'cutsky_grav_zmax0.5_m19.5_faint_{cut_f}.fits'
-        file_r_grav = path+'randoms_10_cutsky_grav_zmax0.5.fits'
+    print('data loaded')
         
-        file_b_real = path+f'cutsky_real_zmax0.5_m19.5_bright_{cut_b}.fits'
-        file_f_real = path+f'cutsky_real_zmax0.5_m19.5_faint_{cut_f}.fits'
-        file_r_real = path+'randoms_10_cutsky_real_zmax0.5.fits'
-        
-        output_grav = f'/global/homes/j/jpiat/data/Pk1_f{cut_f}_b{cut_b}.dat'
-        output_real = f'/global/homes/j/jpiat/data/Pk1_real_f{cut_f}_b{cut_b}.dat'
-        
-        get_Pk(file_f_grav, file_b_grav, file_r_grav, file_r_grav, output_grav, ells=[1])
-        get_Pk(file_f_real, file_b_real, file_r_real, file_r_real, output_real, ells=[1])
-        
-        output_grav = f'/global/homes/j/jpiat/data/Pk1_b{cut_b}_f{cut_f}.dat'
-        output_real = f'/global/homes/j/jpiat/data/Pk1_real_b{cut_b}_f{cut_f}.dat'
-        
-        get_Pk(file_b_grav, file_f_grav, file_r_grav, file_r_grav, output_grav, ells=[1])
-        get_Pk(file_b_real, file_f_real, file_r_real, file_r_real, output_real, ells=[1])
+    get_Pk(data1, data2, rand1, rand2, output, ells=[1])
+    get_Pk(data1_real, data2_real, rand1_real, rand2_real, output_real, ells=[1])
         
      
     
-def get_monopole():
+def get_monopole(input_file, output_path):
     
-    path = '/pscratch/sd/j/jpiat/Abacus/Ab_c000_ph006/z0.200/Split/BGS/'
+    data_real = read_file(input_file)[1]
     
-    file_random = path+'randoms_10_cutsky_real_zmax0.5.fits'
+    z_bins = np.arange(0,0.55,0.05)
+    dist_bins = cosmo.comoving_distance(z_bins)
     
-    cuts = [10,20,30,40,50,60,70,80,90]
-           
-    for cut in cuts:
+    for i in range(len(z_bins)-1):
+    
+        if i==(len(z_bins)-1):
+            keep = (data_real[2]>=dist_bins[i])*(data_real[2]<=dist_bins[i+1])
+        else:
+            keep = (data_real[2]>=dist_bins[i])*(data_real[2]<dist_bins[i+1])
         
-        file_bright = path+f'cutsky_real_zmax0.5_m19.5_bright_{cut}.fits'
-        file_faint = path+f'cutsky_real_zmax0.5_m19.5_faint_{cut}.fits'
-        output_bright = f'/global/homes/j/jpiat/data/Pk_bright_{cut}.dat'
-        output_faint = f'/global/homes/j/jpiat/data/Pk_faint_{cut}.dat'
-        
-        get_Pk(file_bright, file_bright, file_random, file_random, output_bright, ells=[0])
-        get_Pk(file_faint, file_faint, file_random, file_random, output_faint, ells=[0])
+        data_bin = (data_real.T[keep]).T
+    
+        rand_bin = get_random(data_bin)
+    
+        output_real = output_path+'_real_'+f'{z_bins[i]:.2f}_z_{z_bins[i+1]:.2f}.dat'
+    
+        get_Pk(data_bin, data_bin, rand_bin, rand_bin, output_real, ells=[0])
         
         
         
 if __name__ == "__main__":
     
-    path = '/pscratch/sd/j/jpiat/Abacus/Ab_c000_ph006/z0.200/Split/BGS/'
+    path = '/pscratch/sd/j/jpiat/Abacus_mocks/z0.200/AbacusSummit_base_c000_ph000/cutsky/magnitude_splits/'
     
-    file_b = path+f'cutsky_real_zmax0.5_m19.5_bright_10.fits'
-    file_f = path+f'cutsky_real_zmax0.5_m19.5_faint_10.fits'
-    file_r = path+'randoms_10_cutsky_real_zmax0.5.fits'
+    cuts_b = [10]
+    cuts_f = [90]
     
+    for cut_b, cut_f in zip(cuts_b, cuts_f):
     
-    for n in [256,512,1024]:
+        file_b = path+f'cutsky_zmax0.5_m19.5_bright_{cut_b}.fits'
+        file_f = path+f'cutsky_zmax0.5_m19.5_faint_{cut_f}.fits'
+    
+        output_path_bf = path+f'Pk1_bright{cut_b}_faint{cut_f}'
+        output_path_fb = path+f'Pk1_faint{cut_f}_bright{cut_b}'
         
-        get_Pk(file_b, file_f, file_r, file_r, None, n, ells=[1])
+        output_path_b = path+f'Pk0_bright{cut_b}'
+        output_path_f = path+f'Pk0_faint{cut_f}'
     
+        #for n in [256,512,1024]:
+        
+        #get_dipole(file_b, file_f, output_path_bf)    
+        #get_dipole(file_f, file_b, output_path_fb)
+        
+        get_monopole(file_b,output_path_b)
+        get_monopole(file_f,output_path_f)
            
